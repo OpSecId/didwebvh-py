@@ -7,7 +7,7 @@ from .const import HISTORY_FILENAME, METHOD_NAME, WITNESS_FILENAME
 from .core.did_url import DIDUrl
 from .core.file_utils import AsyncTextGenerator, read_url
 from .core.resolver import DidResolver, HistoryResolver, LocalHistoryResolver
-from .core.state import DocumentMetadata, DocumentState
+from .core.state import DocumentMetadata, DocumentState, check_signing_update_key
 from .core.types import SigningKey
 from .domain_path import DomainPath
 from .verify import WebvhVerifier
@@ -105,6 +105,6 @@ def update_document_state(
         params_update=params_update,
         timestamp=timestamp,
     )
-    # FIXME ensure the signing key is present in updateKeys
+    check_signing_update_key(state, prev_state, update_key)
     state.proofs.append(state.create_proof(update_key, timestamp=state.timestamp))
     return state

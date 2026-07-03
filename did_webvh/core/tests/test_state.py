@@ -7,7 +7,8 @@ import pytest
 
 from did_webvh.askar import AskarSigningKey
 from did_webvh.core.hash_utils import HashInfo
-from did_webvh.core.state import DocumentState, verify_state_proofs
+from did_webvh.core.state import DocumentState, check_signing_update_key, verify_state_proofs
+from did_webvh.history import update_document_state
 
 
 @pytest.fixture()
@@ -363,6 +364,42 @@ def test_load_history_line_with_prev_state():
         },
         prev_state=prev_state,
     )
+
+
+def test_check_signing_update_key(mock_document_state, mock_sk, mock_next_sk):
+    pk2 = mock_next_sk.multikey
+    next_state = mock_document_state.create_next(params_update={"updateKeys": [pk2]})
+
+    check_signing_update_key(next_state, mock_document_state, mock_next_sk)
+    with pytest.raises(ValueError, match="not in authorized updateKeys"):
+        check_signing_update_key(next_state, mock_document_state, mock_sk)
+
+    prev_no_prerot = DocumentState(
+        params={
+            "updateKeys": [mock_sk.multikey],
+            "method": "did:tdw:0.4",
+            "scid": "QmapF3WxwoFFugMjrnx2iCwfTWuFwxHEBouPmX9fm9jEN3",
+        },
+        params_update={
+            "updateKeys": [mock_sk.multikey],
+            "method": "did:tdw:0.4",
+            "scid": "QmapF3WxwoFFugMjrnx2iCwfTWuFwxHEBouPmX9fm9jEN3",
+        },
+        document=mock_document_state.document,
+        timestamp=mock_document_state.timestamp,
+        timestamp_raw=mock_document_state.timestamp_raw,
+        version_id=mock_document_state.version_id,
+        version_number=1,
+        last_version_id=mock_document_state.last_version_id,
+        proofs=mock_document_state.proofs,
+    )
+    next_no_prerot = prev_no_prerot.create_next()
+
+    check_signing_update_key(next_no_prerot, prev_no_prerot, mock_sk)
+    with pytest.raises(ValueError, match="not in authorized updateKeys"):
+        check_signing_update_key(next_no_prerot, prev_no_prerot, mock_next_sk)
+
+    update_document_state(prev_no_prerot, mock_sk)
 
 
 def test_jcs_sign_verify(mock_sk):

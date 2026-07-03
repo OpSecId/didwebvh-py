@@ -730,6 +730,28 @@ class DocumentState:
         return res
 
 
+def signing_update_keys(
+    state: DocumentState, prev_state: DocumentState | None
+) -> list[str]:
+    """Return the update keys authorized to sign a log entry."""
+    if not prev_state or prev_state.next_key_hashes:
+        return state.update_keys
+    return prev_state.update_keys
+
+
+def check_signing_update_key(
+    state: DocumentState,
+    prev_state: DocumentState | None,
+    sk: SigningKey,
+) -> None:
+    """Verify that a signing key is authorized for this log entry."""
+    if sk.multikey not in signing_update_keys(state, prev_state):
+        raise ValueError(
+            f"Signing key {sk.multikey!r} is not in authorized updateKeys "
+            f"for version {state.version_number}"
+        )
+
+
 def verify_state_proofs(state: DocumentState, prev_state: DocumentState | None):
     """Verify all proofs on a document state."""
     proofs = state.proofs
@@ -741,10 +763,7 @@ def verify_state_proofs(state: DocumentState, prev_state: DocumentState | None):
                 versionId=state.version_id,
             )
         )
-    if not prev_state or prev_state.next_key_hashes:
-        update_keys = state.update_keys
-    else:
-        update_keys = prev_state.update_keys
+    update_keys = signing_update_keys(state, prev_state)
     for proof in proofs:
         method_id = proof.get("verificationMethod")
         vmethod = resolve_did_key(method_id)

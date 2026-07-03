@@ -11,7 +11,7 @@ import aries_askar
 
 from .askar import AskarSigningKey
 from .const import ASKAR_STORE_FILENAME, DOCUMENT_FILENAME, HISTORY_FILENAME
-from .core.state import DocumentState
+from .core.state import DocumentState, check_signing_update_key
 from .core.types import SigningKey
 from .history import load_local_history
 
@@ -75,7 +75,7 @@ async def update_did(
         and state.params == prev_state.params
     ):
         raise ValueError("There are no document or parameter updates to apply")
-    # FIXME check that the signing key is present in the updateKeys
+    check_signing_update_key(state, prev_state, sk)
     state.proofs.append(state.create_proof(sk, timestamp=state.timestamp))
     with open(history_path, "a") as out:
         print(
